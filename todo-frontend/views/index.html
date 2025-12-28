@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="/static/main.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <div>
+        <h1>The project App</h1>
+        <img src="/api/daily-image" alt="Kubeapp" width="300" />
+        <form action="/todos" method="post">
+          <input
+            type="text"
+            id="new-todo-input"
+            name="content"
+            maxlength="140"
+            required
+          />
+          <button type="submit">Create todo</button>
+        </form>
+        <ul></ul>
+        <p>DevOps with Kubernetes 2025</p>
+      </div>
+    </main>
+  </body>
+</html>

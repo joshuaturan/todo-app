@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: todo-backend-dep
+  namespace: project
 spec:
   replicas: 1
   selector:
@@ -14,4 +15,8 @@ spec:
     spec:
       containers:
         - name: todo-backend
-          image: todo-backend:1.0
+          image: todo-backend:1.1
+          # --- ADD THIS ---
+          env:
+            - name: PORT
+              value: "3000"

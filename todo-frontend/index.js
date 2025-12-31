@@ -2,11 +2,13 @@ const http = require("http");
 const path = require("path");
 const fs = require("fs");
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const CACHE_DIR = path.join(__dirname, "files");
 const IMAGE_PATH = path.join(CACHE_DIR, "cached_image.jpg");
 const TIME_PATH = path.join(CACHE_DIR, "timestamp.txt");
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+const DEFAULT_IMAGE_URL = process.env.IMAGE_URL || "https://picsum.photos/400";
 
 // Ensure cache directory exists
 if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR);
@@ -42,7 +44,7 @@ const server = http.createServer(async (req, res) => {
 
     if (shouldFetch) {
       console.log("Fetching new image for cache...");
-      const response = await fetch("https://picsum.photos/400");
+      const response = await fetch(DEFAULT_IMAGE_URL);
       const buffer = await response.arrayBuffer();
       fs.writeFileSync(IMAGE_PATH, Buffer.from(buffer));
       fs.writeFileSync(TIME_PATH, now.toString());

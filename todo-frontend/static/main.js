@@ -2,9 +2,7 @@ const form = document.querySelector("form");
 const input = document.querySelector("#new-todo-input");
 const todoList = document.querySelector("ul");
 
-// The URL where your todo-backend is running
 const API_URL = "/todos";
-
 /**
  * 1. GET DATA ON LOAD
  * This replaces the "EJS" part. We ask the backend for the current list.

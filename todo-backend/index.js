@@ -48,7 +48,7 @@ const server = http.createServer((req, res) => {
           );
         } else {
           res.writeHead(400, headers);
-          res.end(JSON.stringify({ error: "Content is required" }));
+          res.end(JSON.stringify({ error: "content is required" }));
         }
       } catch (err) {
         res.writeHead(400, headers);

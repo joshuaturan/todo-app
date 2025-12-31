@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: todo-stset
-  namespace: exercises
+  namespace: project # <--- MATCH THIS TO YOUR OTHER RESOURCES
 spec:
   serviceName: todo-db-svc
   replicas: 1
@@ -20,10 +20,14 @@ spec:
           env:
             - name: POSTGRES_USER
               value: myuser
-            - name: POSTGRES_PASSWORD
-              value: mypassword
             - name: POSTGRES_DB
               value: todo_db
+            # CHANGE THIS: Use the Secret instead of hardcoding
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: todo-db-secret
+                  key: POSTGRES_PASSWORD
           ports:
             - containerPort: 5432
           volumeMounts:

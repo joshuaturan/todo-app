@@ -15,8 +15,33 @@ spec:
     spec:
       containers:
         - name: todo-backend
-          image: todo-backend:1.1
-          # --- ADD THIS ---
+          image: todo-backend:1.2 # Make sure to bump the tag after rebuilding!
+          ports:
+            - containerPort: 3000
           env:
             - name: PORT
               value: "3000"
+            # 1. Database Host (from ConfigMap)
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: todo-config
+                  key: DB_HOST
+            # 2. Database Name (from ConfigMap)
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: todo-config
+                  key: DB_NAME
+            # 3. Database User (from ConfigMap)
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: todo-config
+                  key: DB_USER
+            # 4. Database Password (from Secret)
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: todo-db-secret
+                  key: POSTGRES_PASSWORD

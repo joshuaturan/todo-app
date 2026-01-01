@@ -1,12 +1,18 @@
-FROM node:20-alpine
+# 1. Use slim (stable, small, and works perfectly with 'pg')
+FROM node:20-slim
 
-WORKDIR /usr/src/app
+# 2. Set the directory
+WORKDIR /app
 
-# Copy package files and install dependencies
+# 3. Copy package files first
+# This is a 'pro' move: it lets Docker cache your layers so 
+# builds are faster if you only change your code.
 COPY package*.json ./
+
+# 4. Install the 'pg' library inside the container
 RUN npm install
 
-# Copy the rest of your code
+# 5. Copy the rest of your code (index.js)
 COPY . .
 
 EXPOSE 3000

@@ -11,6 +11,7 @@
   "license": "ISCi",
   "type": "commonjs",
   "dependencies": {
-    "ejs": "^3.1.10"
+    "ejs": "^3.1.10",
+    "pg": "^8.16.3"
   }
 }

@@ -1,0 +1,15 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: wiki-reminder
+  namespace: project
+spec:
+  schedule: "* * * * *" # Every hour
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: worker
+              image: todo-cronjob:1.0
+          restartPolicy: OnFailure

@@ -12,4 +12,7 @@ spec:
           containers:
             - name: worker
               image: todo-cronjob:1.0
+              env:
+                - name: WIKI_URL
+                  value: "https://en.wikipedia.org/wiki/Special:Random"
           restartPolicy: OnFailure

@@ -54,12 +54,35 @@ const startServer = async () => {
         req.on("end", async () => {
           try {
             const { content } = JSON.parse(body);
+
+            // 1. Check length (Exercise Requirement)
+            if (content.length > 140) {
+              // 2. LOG THE REJECTION (Loki will see this)
+              console.warn(
+                `REJECTED: Todo is too long (${content.length} characters). Content: "${content.substring(0, 20)}..."`,
+              );
+
+              res.writeHead(400, headers);
+              res.end(
+                JSON.stringify({
+                  error: "Todo is too long. Maximum length is 140 characters.",
+                }),
+              );
+              return;
+            }
+
+            // 3. Log the successful attempt
+            console.log(
+              `ACCEPTED: New todo created (${content.length} characters).`,
+            );
+
             await pool.query("INSERT INTO todos (content) VALUES ($1)", [
               content,
             ]);
             res.writeHead(201, headers);
             res.end(JSON.stringify({ status: "success" }));
           } catch (e) {
+            console.error("ERROR: Failed to process POST /todos", e.message);
             res.writeHead(400, headers);
             res.end(JSON.stringify({ error: "Invalid data" }));
           }

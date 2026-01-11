@@ -1,0 +1,24 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Build outputs
+dist/
+build/
+*.exe
+*.dll
+*.so
+
+# Environment secrets (CRITICAL: Never push these)
+.env
+.env.local
+*.pem
+key.json
+
+# IDE / OS junk
+.DS_Store
+.vscode/
+.idea/
+
+# Kustomize / Build temp files
+.kustomize/

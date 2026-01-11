@@ -44,7 +44,7 @@ jobs:
       - name: Build and Publish Backend
         run: |-
           BACKEND_TAG="$REGISTRY/$PROJECT_ID/$REPOSITORY/todo-backend:$BRANCH-$GITHUB_SHA"
-          docker build -t $BACKEND_TAG ./todo-app/todo-backend
+          docker build -t $BACKEND_TAG ./todo-backend
           docker push $BACKEND_TAG
           echo "BACKEND_TAG=$BACKEND_TAG" >> $GITHUB_ENV
 
@@ -52,7 +52,7 @@ jobs:
       - name: Build and Publish Frontend
         run: |-
           FRONTEND_TAG="$REGISTRY/$PROJECT_ID/$REPOSITORY/todo-frontend:$BRANCH-$GITHUB_SHA"
-          docker build -t $FRONTEND_TAG ./todo-app/todo-frontend
+          docker build -t $FRONTEND_TAG ./todo-frontend
           docker push $FRONTEND_TAG
           echo "FRONTEND_TAG=$FRONTEND_TAG" >> $GITHUB_ENV
 

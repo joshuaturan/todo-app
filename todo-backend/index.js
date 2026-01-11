@@ -39,6 +39,12 @@ const startServer = async () => {
         return;
       }
 
+      if (req.url === "/" || req.url === "/healthz") {
+        res.writeHead(200, headers);
+        res.end(JSON.stringify({ status: "ok" }));
+        return;
+      }
+
       if (req.url === "/todos" && req.method === "GET") {
         const result = await pool.query(
           "SELECT content FROM todos ORDER BY id DESC",

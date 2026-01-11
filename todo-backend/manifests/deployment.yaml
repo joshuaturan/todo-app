@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: todo-backend
-          image: joshturan/todo-backend:1.2 # Make sure to bump the tag after rebuilding!
+          image: todo-backend-image # Make sure to bump the tag after rebuilding!
           ports:
             - containerPort: 3000
           env:

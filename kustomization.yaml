@@ -1,14 +1,16 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+
 resources:
   - db
   - todo-backend
   - todo-frontend
+
+# These 'name' values must match the image field in your Deployment YAMLs
 images:
-  - name: joshturan/todo-backend
+  - name: todo-backend-image
     newName: joshturan/todo-backend
-    newTag: "1.2"
-  - name: joshturan/todo-frontend
+  - name: todo-frontend-image
     newName: joshturan/todo-frontend
-    newTag: "1.0"
+
 namespace: project

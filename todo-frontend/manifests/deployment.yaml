@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: todo-frontend
-          image: joshturan/todo-frontend:1.0
+          image: todo-frontend-image
           # --- NEW SECTION: Link to your ConfigMap ---
           env:
             - name: PORT

@@ -71,5 +71,5 @@ jobs:
           kustomize build . | kubectl apply -f -
 
           # Check status of both deployments
-          kubectl rollout status deployment todo-backend
-          kubectl rollout status deployment todo-frontend
+          kubectl rollout status deployment todo-backend-dep
+          kubectl rollout status deployment todo-frontend-dep

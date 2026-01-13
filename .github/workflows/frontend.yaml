@@ -1,0 +1,38 @@
+name: Release Frontend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "todo-frontend/**" # Only triggers if files in this folder change
+      - "kustomization.yaml" # Also trigger if we change the root config
+
+env:
+  # ... (Keep your existing env variables here) ...
+  IMAGE: todo-frontend
+  SERVICE: todo-frontend-dep
+
+jobs:
+  build-publish-deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ... (Auth, Cloud SDK, and GKE Credential steps same as before) ...
+
+      - name: Build and Publish Frontend
+        run: |-
+          TAG="$REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE:$BRANCH-$GITHUB_SHA"
+          docker build -t $TAG ./todo-frontend
+          docker push $TAG
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Deploy Frontend
+        run: |-
+          # Notice we only update the backend image here
+          kustomize edit set image todo-frontend-image=$TAG
+          kustomize build . | kubectl apply -f -
+          kubectl rollout status deployment/$SERVICE -n project

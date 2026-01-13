@@ -15,17 +15,14 @@ on:
       kustomize_patch_name:
         required: true
         type: string
-    secrets:
-      GKE_PROJECT:
-        required: true
-      GKE_SA_KEY:
-        required: true
 
 env:
   GKE_CLUSTER: dwk-cluster
   GKE_ZONE: europe-north1-b
   REGISTRY: europe-north1-docker.pkg.dev
   REPOSITORY: my-repository
+  # Use secrets directly since they are inherited
+  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
 
 jobs:
   build-publish-deploy:
@@ -34,26 +31,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: google-github-actions/auth@v2
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
         with:
           credentials_json: "${{ secrets.GKE_SA_KEY }}"
 
-      - name: "Set up Cloud SDK"
+      - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: "Get GKE credentials"
-        uses: "google-github-actions/get-gke-credentials@v2"
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
         with:
           cluster_name: "${{ env.GKE_CLUSTER }}"
-          project_id: "${{ secrets.GKE_PROJECT }}"
+          project_id: "${{ env.PROJECT_ID }}"
           location: "${{ env.GKE_ZONE }}"
 
-      - name: "Configure Docker"
+      - name: Configure Docker
         run: gcloud auth configure-docker "$REGISTRY"
 
       - name: Build and Publish
         run: |-
-          TAG="$REGISTRY/${{ secrets.GKE_PROJECT }}/$REPOSITORY/${{ inputs.image_name }}:${{ github.ref_name }}-$GITHUB_SHA"
+          TAG="$REGISTRY/$PROJECT_ID/$REPOSITORY/${{ inputs.image_name }}:${{ github.ref_name }}-$GITHUB_SHA"
           docker build -t $TAG ./${{ inputs.directory }}
           docker push $TAG
           echo "TAG=$TAG" >> $GITHUB_ENV
@@ -63,6 +61,9 @@ jobs:
 
       - name: Deploy
         run: |-
+          # We update the specific image placeholder passed from the caller
           kustomize edit set image ${{ inputs.kustomize_patch_name }}=$TAG
           kustomize build . | kubectl apply -f -
+
+          # Check status in the 'project' namespace
           kubectl rollout status deployment/${{ inputs.deployment_name }} -n project

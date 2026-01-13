@@ -62,28 +62,26 @@ jobs:
 
       - name: Deploy
         run: |-
-          # Determine Namespace
           if [ "${{ github.ref_name }}" = "main" ]; then
             NAMESPACE="project"
           else
             NAMESPACE="${{ github.ref_name }}"
           fi
 
-          # Prepare Namespace
           kubectl create namespace $NAMESPACE || true
           kubectl config set-context --current --namespace=$NAMESPACE
 
-          # CRITICAL: Edit the kustomization.yaml in the root
-          # This replaces 'todo-frontend-image' with the full Google URL
+          # Move into the specific component directory (e.g., todo-frontend)
+          cd ${{ inputs.directory }}
+
+          # Update ONLY this component's kustomization.yaml
           kustomize edit set image ${{ inputs.kustomize_patch_name }}=$TAG
           kustomize edit set namespace $NAMESPACE
 
-          # DEBUG: Check if kustomization.yaml actually updated
-          echo "--- Updated kustomization.yaml ---"
+          echo "--- Updated Component kustomization.yaml ---"
           cat kustomization.yaml
 
-          # Build and Apply
+          # Apply ONLY this component
           kustomize build . | kubectl apply -f -
 
-          # Rollout Status
           kubectl rollout status deployment/${{ inputs.deployment_name }}

@@ -19,7 +19,6 @@ on:
 jobs:
   build-publish-deploy:
     runs-on: ubuntu-latest
-    # This must be here to access Environment Secrets
     environment: dev
 
     env:
@@ -63,11 +62,22 @@ jobs:
 
       - name: Deploy
         run: |-
-          # Update the image in kustomization.yaml using the provided patch name
+          # Logic: Use 'project' for main branch, else use branch name
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            NAMESPACE="project"
+          else
+            NAMESPACE="${{ github.ref_name }}"
+          fi
+
+          echo "Target Namespace: $NAMESPACE"
+
+          kubectl create namespace $NAMESPACE || true
+          kubectl config set-context --current --namespace=$NAMESPACE
+
+          kustomize edit set namespace $NAMESPACE
           kustomize edit set image ${{ inputs.kustomize_patch_name }}=$TAG
 
-          # Build and apply
           kustomize build . | kubectl apply -f -
 
-          # Verify the rollout in the project namespace
-          kubectl rollout status deployment/${{ inputs.deployment_name }} -n project
+          kubectl rollout status deployment/${{ inputs.deployment_name }}
+          kubectl get services -o wide

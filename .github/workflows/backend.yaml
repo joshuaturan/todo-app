@@ -3,14 +3,13 @@ name: Release Backend
 on:
   push:
     branches:
-      - main
+      - "**"
     paths:
       - "todo-backend/**"
       - "kustomization.yaml"
 
 jobs:
   call-deploy:
-    # Updated to your specific filename
     uses: ./.github/workflows/deploy-template.yaml
     with:
       image_name: todo-backend

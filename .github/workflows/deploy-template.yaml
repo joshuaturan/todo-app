@@ -16,16 +16,19 @@ on:
         required: true
         type: string
 
-env:
-  GKE_CLUSTER: dwk-cluster
-  GKE_ZONE: europe-north1-b
-  REGISTRY: europe-north1-docker.pkg.dev
-  REPOSITORY: my-repository
-  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
-
 jobs:
   build-publish-deploy:
     runs-on: ubuntu-latest
+    # This must be here to access Environment Secrets
+    environment: dev
+
+    env:
+      GKE_CLUSTER: dwk-cluster
+      GKE_ZONE: europe-north1-b
+      REGISTRY: europe-north1-docker.pkg.dev
+      REPOSITORY: my-repository
+      PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,6 +63,11 @@ jobs:
 
       - name: Deploy
         run: |-
+          # Update the image in kustomization.yaml using the provided patch name
           kustomize edit set image ${{ inputs.kustomize_patch_name }}=$TAG
+
+          # Build and apply
           kustomize build . | kubectl apply -f -
+
+          # Verify the rollout in the project namespace
           kubectl rollout status deployment/${{ inputs.deployment_name }} -n project

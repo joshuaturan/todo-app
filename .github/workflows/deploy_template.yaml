@@ -1,0 +1,68 @@
+name: Reusable Deploy
+
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        required: true
+        type: string
+      deployment_name:
+        required: true
+        type: string
+      directory:
+        required: true
+        type: string
+      kustomize_patch_name:
+        required: true
+        type: string
+    secrets:
+      GKE_PROJECT:
+        required: true
+      GKE_SA_KEY:
+        required: true
+
+env:
+  GKE_CLUSTER: dwk-cluster
+  GKE_ZONE: europe-north1-b
+  REGISTRY: europe-north1-docker.pkg.dev
+  REPOSITORY: my-repository
+
+jobs:
+  build-publish-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.GKE_SA_KEY }}"
+
+      - name: "Set up Cloud SDK"
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: "Get GKE credentials"
+        uses: "google-github-actions/get-gke-credentials@v2"
+        with:
+          cluster_name: "${{ env.GKE_CLUSTER }}"
+          project_id: "${{ secrets.GKE_PROJECT }}"
+          location: "${{ env.GKE_ZONE }}"
+
+      - name: "Configure Docker"
+        run: gcloud auth configure-docker "$REGISTRY"
+
+      - name: Build and Publish
+        run: |-
+          TAG="$REGISTRY/${{ secrets.GKE_PROJECT }}/$REPOSITORY/${{ inputs.image_name }}:${{ github.ref_name }}-$GITHUB_SHA"
+          docker build -t $TAG ./${{ inputs.directory }}
+          docker push $TAG
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Set up Kustomize
+        uses: imranismail/setup-kustomize@v2.1.0
+
+      - name: Deploy
+        run: |-
+          kustomize edit set image ${{ inputs.kustomize_patch_name }}=$TAG
+          kustomize build . | kubectl apply -f -
+          kubectl rollout status deployment/${{ inputs.deployment_name }} -n project

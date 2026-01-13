@@ -1,60 +1,17 @@
 name: Release Frontend
-
 on:
   push:
-    branches:
-      - main
-    paths:
-      - "todo-frontend/**"
-      - "kustomization.yaml"
-
-env:
-  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
-  GKE_CLUSTER: dwk-cluster
-  GKE_ZONE: europe-north1-b
-  REGISTRY: europe-north1-docker.pkg.dev
-  REPOSITORY: my-repository
-  BRANCH: ${{ github.ref_name }}
-  IMAGE: todo-frontend
-  SERVICE: todo-frontend-dep
+    branches: [main]
+    paths: ["todo-frontend/**", "kustomization.yaml"]
 
 jobs:
-  build-publish-deploy:
-    runs-on: ubuntu-latest
-    environment: dev
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - uses: google-github-actions/auth@v2
-        with:
-          credentials_json: "${{ secrets.GKE_SA_KEY }}"
-
-      - name: "Set up Cloud SDK"
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: "Get GKE credentials"
-        uses: "google-github-actions/get-gke-credentials@v2"
-        with:
-          cluster_name: "${{ env.GKE_CLUSTER }}"
-          project_id: "${{ env.PROJECT_ID }}"
-          location: "${{ env.GKE_ZONE }}"
-
-      - name: "Configure Docker"
-        run: gcloud auth configure-docker "$REGISTRY"
-
-      - name: Build and Publish Frontend
-        run: |-
-          TAG="$REGISTRY/$PROJECT_ID/$REPOSITORY/$IMAGE:$BRANCH-$GITHUB_SHA"
-          docker build -t $TAG ./todo-frontend
-          docker push $TAG
-          echo "TAG=$TAG" >> $GITHUB_ENV
-
-      - name: Set up Kustomize
-        uses: imranismail/setup-kustomize@v2.1.0
-
-      - name: Deploy Frontend
-        run: |-
-          kustomize edit set image todo-frontend-image=$TAG
-          kustomize build . | kubectl apply -f -
-          kubectl rollout status deployment/$SERVICE -n project
+  call-deploy:
+    uses: ./.github/workflows/reusable-deploy.yaml
+    with:
+      image_name: todo-frontend
+      deployment_name: todo-frontend-dep
+      directory: todo-frontend
+      kustomize_patch_name: todo-frontend-image
+    secrets:
+      GKE_PROJECT: ${{ secrets.GKE_PROJECT }}
+      GKE_SA_KEY: ${{ secrets.GKE_SA_KEY }}

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: todo-backend-dep
-  namespace: project
+  # REMOVE the namespace line from here!
 spec:
   replicas: 1
   selector:
@@ -15,31 +15,27 @@ spec:
     spec:
       containers:
         - name: todo-backend
-          image: todo-backend-image # Make sure to bump the tag after rebuilding!
+          image: todo-backend-image # Kustomize replaces this
           ports:
             - containerPort: 3000
           env:
             - name: PORT
               value: "3000"
-            # 1. Database Host (from ConfigMap)
             - name: DB_HOST
               valueFrom:
                 configMapKeyRef:
                   name: todo-config
                   key: DB_HOST
-            # 2. Database Name (from ConfigMap)
             - name: DB_NAME
               valueFrom:
                 configMapKeyRef:
                   name: todo-config
                   key: DB_NAME
-            # 3. Database User (from ConfigMap)
             - name: DB_USER
               valueFrom:
                 configMapKeyRef:
                   name: todo-config
                   key: DB_USER
-            # 4. Database Password (from Secret)
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:

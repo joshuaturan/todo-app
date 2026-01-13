@@ -62,22 +62,22 @@ jobs:
 
       - name: Deploy
         run: |-
-          # Logic: Use 'project' for main branch, else use branch name
           if [ "${{ github.ref_name }}" = "main" ]; then
             NAMESPACE="project"
           else
             NAMESPACE="${{ github.ref_name }}"
           fi
 
-          echo "Target Namespace: $NAMESPACE"
+          echo "Deploying to namespace: $NAMESPACE"
 
           kubectl create namespace $NAMESPACE || true
           kubectl config set-context --current --namespace=$NAMESPACE
 
+          # Update the kustomization.yaml in the runner's workspace
           kustomize edit set namespace $NAMESPACE
           kustomize edit set image ${{ inputs.kustomize_patch_name }}=$TAG
 
+          # Apply the transformed manifests
           kustomize build . | kubectl apply -f -
 
           kubectl rollout status deployment/${{ inputs.deployment_name }}
-          kubectl get services -o wide

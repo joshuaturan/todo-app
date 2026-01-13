@@ -6,11 +6,6 @@ resources:
   - todo-backend
   - todo-frontend
 
-# These 'name' values must match the image field in your Deployment YAMLs
 images:
   - name: todo-backend-image
-    newName: joshturan/todo-backend
   - name: todo-frontend-image
-    newName: joshturan/todo-frontend
-
-namespace: project

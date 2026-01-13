@@ -2,7 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: todo-frontend-dep
-  namespace: project
+  # Notice: No namespace: project here.
+  # Kustomize will inject the correct one based on the branch.
 spec:
   replicas: 1
   selector:
@@ -15,18 +16,11 @@ spec:
     spec:
       containers:
         - name: todo-frontend
-          image: todo-frontend-image
-          # --- NEW SECTION: Link to your ConfigMap ---
+          image: todo-frontend-image # This matches 'kustomize_patch_name' in your workflow
+          ports:
+            - containerPort: 80
           env:
-            - name: PORT
-              value: "3000" # You can put this in ConfigMap too if you prefer
-            - name: API_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: todo-app-config
-                  key: API_URL
-            - name: IMAGE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: todo-app-config
-                  key: DEFAULT_IMAGE_URL
+            # If your frontend needs to talk to the backend,
+            # ensure it points to the service in the same namespace
+            - name: REACT_APP_BACKEND_URL
+              value: "http://todo-backend-svc"

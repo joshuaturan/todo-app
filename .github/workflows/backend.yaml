@@ -6,7 +6,7 @@ on:
 
 jobs:
   call-deploy:
-    uses: ./.github/workflows/reusable-deploy.yaml
+    uses: ./.github/workflows/deploy-template.yaml
     with:
       image_name: todo-backend
       deployment_name: todo-backend-dep

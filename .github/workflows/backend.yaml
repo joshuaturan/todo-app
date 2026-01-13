@@ -5,11 +5,16 @@ on:
     branches:
       - main
     paths:
-      - "todo-backend/**" # Only triggers if files in this folder change
-      - "kustomization.yaml" # Also trigger if we change the root config
+      - "todo-backend/**"
+      - "kustomization.yaml"
 
 env:
-  # ... (Keep your existing env variables here) ...
+  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+  GKE_CLUSTER: dwk-cluster
+  GKE_ZONE: europe-north1-b
+  REGISTRY: europe-north1-docker.pkg.dev
+  REPOSITORY: my-repository
+  BRANCH: ${{ github.ref_name }}
   IMAGE: todo-backend
   SERVICE: todo-backend-dep
 
@@ -21,7 +26,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ... (Auth, Cloud SDK, and GKE Credential steps same as before) ...
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.GKE_SA_KEY }}"
+
+      - name: "Set up Cloud SDK"
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: "Get GKE credentials"
+        uses: "google-github-actions/get-gke-credentials@v2"
+        with:
+          cluster_name: "${{ env.GKE_CLUSTER }}"
+          project_id: "${{ env.PROJECT_ID }}"
+          location: "${{ env.GKE_ZONE }}"
+
+      - name: "Configure Docker"
+        run: gcloud auth configure-docker "$REGISTRY"
 
       - name: Build and Publish Backend
         run: |-
@@ -30,9 +50,11 @@ jobs:
           docker push $TAG
           echo "TAG=$TAG" >> $GITHUB_ENV
 
+      - name: Set up Kustomize
+        uses: imranismail/setup-kustomize@v2.1.0
+
       - name: Deploy Backend
         run: |-
-          # Notice we only update the backend image here
           kustomize edit set image todo-backend-image=$TAG
           kustomize build . | kubectl apply -f -
           kubectl rollout status deployment/$SERVICE -n project

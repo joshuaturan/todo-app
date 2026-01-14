@@ -3,10 +3,16 @@ name: Release Backend
 on:
   push:
     branches:
-      - "**"
+      - main
     paths:
       - "todo-backend/**"
-      - "kustomization.yaml"
+  pull_request:
+    types: [opened] # Trigger BOTH when the PR is first created
+  pull_request_target:
+    types: [synchronize]
+    paths:
+      - "todo-backend/**"
+  workflow_dispatch:
 
 jobs:
   call-deploy:

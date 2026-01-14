@@ -8,7 +8,6 @@ on:
       directory: { required: true, type: string }
       kustomize_patch_name: { required: true, type: string }
 
-# This prevents race conditions in your Namespace
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -28,36 +27,67 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ... (Auth, Gcloud, GKE, Docker steps same as before) ...
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.GKE_SA_KEY }}"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: "${{ env.GKE_CLUSTER }}"
+          project_id: "${{ env.PROJECT_ID }}"
+          location: "${{ env.GKE_ZONE }}"
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker "$REGISTRY"
+
+      - name: Set Environment Variables
+        run: |-
+          # 1. Get the raw branch name
+          if [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "pull_request_target" ]; then
+            RAW_BRANCH="${{ github.event.pull_request.head.ref }}"
+          else
+            RAW_BRANCH="${{ github.ref_name }}"
+          fi
+
+          # 2. Sanitize for Docker Tags and K8s Namespaces (no slashes, lowercase)
+          SAFE_NAME=$(echo $RAW_BRANCH | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+
+          # 3. Handle 'main' vs feature branch namespace
+          if [ "$SAFE_NAME" = "main" ]; then
+            NAMESPACE="project"
+          else
+            NAMESPACE="$SAFE_NAME"
+          fi
+
+          # 4. Save to GITHUB_ENV for use in later steps
+          echo "SAFE_BRANCH=$SAFE_NAME" >> $GITHUB_ENV
+          echo "NAMESPACE=$NAMESPACE" >> $GITHUB_ENV
+          echo "TAG=$REGISTRY/$PROJECT_ID/$REPOSITORY/${{ inputs.image_name }}:$SAFE_NAME-$GITHUB_SHA" >> $GITHUB_ENV
 
       - name: Build and Publish
         run: |-
-          TAG="$REGISTRY/$PROJECT_ID/$REPOSITORY/${{ inputs.image_name }}:${{ github.ref_name }}-$GITHUB_SHA"
           docker build -t $TAG ./${{ inputs.directory }}
           docker push $TAG
-          echo "TAG=$TAG" >> $GITHUB_ENV
 
       - name: Set up Kustomize
         uses: imranismail/setup-kustomize@v2.1.0
 
       - name: Deploy
         run: |-
-          # Extract Namespace
-          if [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "pull_request_target" ]; then
-            NAMESPACE="${{ github.event.pull_request.head.ref }}"
-          elif [ "${{ github.ref_name }}" = "main" ]; then
-            NAMESPACE="project"
-          else
-            NAMESPACE="${{ github.ref_name }}"
-          fi
+          echo "Deploying to Namespace: $NAMESPACE"
 
-          # Sanitize namespace (k8s doesn't like slashes or dots)
-          NAMESPACE=$(echo $NAMESPACE | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
-
+          # Create namespace if it doesn't exist
           kubectl get namespace $NAMESPACE > /dev/null 2>&1 || kubectl create namespace $NAMESPACE
           kubectl config set-context --current --namespace=$NAMESPACE
 
           cd ${{ inputs.directory }}
+
+          # Use the TAG and NAMESPACE we generated in the Setup step
           kustomize edit set image ${{ inputs.kustomize_patch_name }}=$TAG
           kustomize edit set namespace $NAMESPACE
 

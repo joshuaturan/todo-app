@@ -3,24 +3,15 @@ name: Reusable Deploy
 on:
   workflow_call:
     inputs:
-      image_name:
-        required: true
-        type: string
-      deployment_name:
-        required: true
-        type: string
-      directory:
-        required: true
-        type: string
-      kustomize_patch_name:
-        required: true
-        type: string
+      image_name: { required: true, type: string }
+      deployment_name: { required: true, type: string }
+      directory: { required: true, type: string }
+      kustomize_patch_name: { required: true, type: string }
 
 jobs:
   build-publish-deploy:
     runs-on: ubuntu-latest
     environment: dev
-
     env:
       GKE_CLUSTER: dwk-cluster
       GKE_ZONE: europe-north1-b
@@ -52,6 +43,7 @@ jobs:
 
       - name: Build and Publish
         run: |-
+          # Use branch name for tag (simple format as you requested)
           TAG="$REGISTRY/$PROJECT_ID/$REPOSITORY/${{ inputs.image_name }}:${{ github.ref_name }}-$GITHUB_SHA"
           docker build -t $TAG ./${{ inputs.directory }}
           docker push $TAG
@@ -68,20 +60,16 @@ jobs:
             NAMESPACE="${{ github.ref_name }}"
           fi
 
+          # Create namespace and switch context
           kubectl create namespace $NAMESPACE || true
           kubectl config set-context --current --namespace=$NAMESPACE
 
-          # Move into the specific component directory (e.g., todo-frontend)
-          cd ${{ inputs.directory }}
-
-          # Update ONLY this component's kustomization.yaml
+          # CRITICAL: We run kustomize from the ROOT (.) 
+          # so it includes the 'db' resource from your root kustomization.yaml
           kustomize edit set image ${{ inputs.kustomize_patch_name }}=$TAG
           kustomize edit set namespace $NAMESPACE
 
-          echo "--- Updated Component kustomization.yaml ---"
-          cat kustomization.yaml
-
-          # Apply ONLY this component
+          echo "--- Root kustomization.yaml applied to $NAMESPACE ---"
           kustomize build . | kubectl apply -f -
 
           kubectl rollout status deployment/${{ inputs.deployment_name }}

@@ -22,7 +22,7 @@ const headers = {
 const startServer = async () => {
   try {
     // 1. Try to connect and create the table
-    console.log("Connecting to database2...");
+    console.log("Connecting to database23...");
     await pool.query(`
       CREATE TABLE IF NOT EXISTS todos (
         id SERIAL PRIMARY KEY,

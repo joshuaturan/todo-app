@@ -3,24 +3,15 @@ name: Reusable Deploy
 on:
   workflow_call:
     inputs:
-      image_name:
-        required: true
-        type: string
-      deployment_name:
-        required: true
-        type: string
-      directory:
-        required: true
-        type: string
-      kustomize_patch_name:
-        required: true
-        type: string
+      image_name: { required: true, type: string }
+      deployment_name: { required: true, type: string }
+      directory: { required: true, type: string }
+      kustomize_patch_name: { required: true, type: string }
 
 jobs:
   build-publish-deploy:
     runs-on: ubuntu-latest
     environment: dev
-
     env:
       GKE_CLUSTER: dwk-cluster
       GKE_ZONE: europe-north1-b
@@ -53,12 +44,10 @@ jobs:
       - name: Build and Publish
         run: |-
           TAG="$REGISTRY/$PROJECT_ID/$REPOSITORY/${{ inputs.image_name }}:${{ github.ref_name }}-$GITHUB_SHA"
+          # Build context is the specific directory (frontend or backend)
           docker build -t $TAG ./${{ inputs.directory }}
           docker push $TAG
           echo "TAG=$TAG" >> $GITHUB_ENV
-
-      - name: Set up Kustomize
-        uses: imranismail/setup-kustomize@v2.1.0
 
       - name: Deploy
         run: |-
@@ -68,20 +57,20 @@ jobs:
             NAMESPACE="${{ github.ref_name }}"
           fi
 
+          # 1. Prepare Namespace
           kubectl create namespace $NAMESPACE || true
           kubectl config set-context --current --namespace=$NAMESPACE
 
-          # Move into the specific component directory (e.g., todo-frontend)
-          cd ${{ inputs.directory }}
-
-          # Update ONLY this component's kustomization.yaml
+          # 2. Update ROOT Kustomization (not the subfolder one)
+          # This ensures that when we build, the DB and ConfigMaps are included
           kustomize edit set image ${{ inputs.kustomize_patch_name }}=$TAG
           kustomize edit set namespace $NAMESPACE
 
-          echo "--- Updated Component kustomization.yaml ---"
-          cat kustomization.yaml
+          echo "--- Deploying to $NAMESPACE ---"
 
-          # Apply ONLY this component
+          # 3. Build from ROOT (.)
+          # This follows the 'resources' list in your root kustomization.yaml
           kustomize build . | kubectl apply -f -
 
+          # 4. Wait for the specific deployment to be ready
           kubectl rollout status deployment/${{ inputs.deployment_name }}

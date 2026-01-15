@@ -2,7 +2,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: todo-db-svc # Must match the serviceName in your StatefulSet
-  namespace: project
 spec:
   clusterIP: None # Makes it Headless
   selector:

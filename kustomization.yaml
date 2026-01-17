@@ -5,7 +5,3 @@ resources:
   - db
   - todo-backend
   - todo-frontend
-
-images:
-  - name: todo-backend-image
-  - name: todo-frontend-image

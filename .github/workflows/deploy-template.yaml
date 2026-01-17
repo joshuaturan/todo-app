@@ -44,7 +44,6 @@ jobs:
       - name: Build and Publish
         run: |-
           TAG="$REGISTRY/$PROJECT_ID/$REPOSITORY/${{ inputs.image_name }}:${{ github.ref_name }}-$GITHUB_SHA"
-          # Build context is the specific directory (frontend or backend)
           docker build -t $TAG ./${{ inputs.directory }}
           docker push $TAG
           echo "TAG=$TAG" >> $GITHUB_ENV
@@ -61,15 +60,24 @@ jobs:
           kubectl create namespace $NAMESPACE || true
           kubectl config set-context --current --namespace=$NAMESPACE
 
-          # 2. Update ROOT Kustomization (not the subfolder one)
-          # This ensures that when we build, the DB and ConfigMaps are included
+          # 2. Deploy the Shared Database/Config/Secrets first
+          # This ensures the DB is always there regardless of which app deploys
+          if [ -d "db" ]; then
+            echo "--- Deploying Database Resources to $NAMESPACE ---"
+            cd db
+            kustomize edit set namespace $NAMESPACE
+            kustomize build . | kubectl apply -f -
+            cd ..
+          fi
+
+          # 3. Deploy the specific App Component (Frontend or Backend)
+          # We 'cd' into the directory so we ONLY patch this component's image
+          echo "--- Deploying ${{ inputs.directory }} to $NAMESPACE ---"
+          cd ${{ inputs.directory }}
+
           kustomize edit set image ${{ inputs.kustomize_patch_name }}=$TAG
           kustomize edit set namespace $NAMESPACE
 
-          echo "--- Deploying to $NAMESPACE ---"
-
-          # 3. Build from ROOT (.)
-          # This follows the 'resources' list in your root kustomization.yaml
           kustomize build . | kubectl apply -f -
 
           # 4. Wait for the specific deployment to be ready

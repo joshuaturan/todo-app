@@ -3,5 +3,3 @@ kind: Kustomization
 resources:
   - manifests/deployment.yaml
   - manifests/service.yaml
-images:
-  - name: todo-backend-image

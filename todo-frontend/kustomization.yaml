@@ -5,5 +5,3 @@ resources:
   - manifests/service.yaml
   - manifests/ingress.yaml
   - manifests/configmap.yaml
-images:
-  - name: todo-frontend-image

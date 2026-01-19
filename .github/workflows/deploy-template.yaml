@@ -43,6 +43,7 @@ jobs:
 
       - name: Build and Publish
         run: |-
+          # Use branch name for tag (simple format as you requested)
           TAG="$REGISTRY/$PROJECT_ID/$REPOSITORY/${{ inputs.image_name }}:${{ github.ref_name }}-$GITHUB_SHA"
           docker build -t $TAG ./${{ inputs.directory }}
           docker push $TAG

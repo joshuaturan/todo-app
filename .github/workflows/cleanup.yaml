@@ -1,0 +1,37 @@
+name: Cleanup Branch
+
+on:
+  delete: # This triggers when you delete a branch in GitHub
+
+jobs:
+  delete-namespace:
+    # Only run if the deleted ref was a branch (not a tag)
+    if: github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.GKE_SA_KEY }}"
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: dwk-cluster
+          project_id: ${{ secrets.GKE_PROJECT }}
+          location: europe-north1-b
+
+      - name: Delete Namespace
+        run: |-
+          NAMESPACE="${{ github.event.ref }}"
+
+          # Don't accidentally delete production!
+          if [ "$NAMESPACE" = "main" ] || [ "$NAMESPACE" = "master" ]; then
+            echo "Protection: Skipping deletion for $NAMESPACE"
+            exit 0
+          fi
+
+          echo "Deleting namespace: $NAMESPACE"
+          # --wait=false ensures the GitHub Action finishes quickly 
+          # while K8s cleans up in the background
+          kubectl delete namespace $NAMESPACE --wait=false || echo "Namespace already gone"

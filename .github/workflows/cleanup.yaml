@@ -1,14 +1,22 @@
-name: Cleanup Branch
+name: Cleanup Namespace
 
 on:
-  delete: # This triggers when you delete a branch in GitHub
+  delete: # Triggers when a branch or tag is deleted
 
 jobs:
   delete-namespace:
-    # Only run if the deleted ref was a branch (not a tag)
+    # Only run if a branch was deleted (ignore tag deletions)
     if: github.event.ref_type == 'branch'
     runs-on: ubuntu-latest
+    env:
+      GKE_CLUSTER: dwk-cluster
+      GKE_ZONE: europe-north1-b
+      PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -17,21 +25,20 @@ jobs:
       - name: Get GKE credentials
         uses: google-github-actions/get-gke-credentials@v2
         with:
-          cluster_name: dwk-cluster
-          project_id: ${{ secrets.GKE_PROJECT }}
-          location: europe-north1-b
+          cluster_name: "${{ env.GKE_CLUSTER }}"
+          project_id: "${{ env.PROJECT_ID }}"
+          location: "${{ env.GKE_ZONE }}"
 
       - name: Delete Namespace
         run: |-
+          # The deleted branch name is in github.event.ref
           NAMESPACE="${{ github.event.ref }}"
 
-          # Don't accidentally delete production!
-          if [ "$NAMESPACE" = "main" ] || [ "$NAMESPACE" = "master" ]; then
-            echo "Protection: Skipping deletion for $NAMESPACE"
+          # Safety check: Never delete the 'project', 'default', or 'kube-system' namespaces
+          if [ "$NAMESPACE" == "main" ] || [ "$NAMESPACE" == "project" ] || [ "$NAMESPACE" == "default" ]; then
+            echo "Skipping deletion of protected namespace: $NAMESPACE"
             exit 0
           fi
 
           echo "Deleting namespace: $NAMESPACE"
-          # --wait=false ensures the GitHub Action finishes quickly 
-          # while K8s cleans up in the background
-          kubectl delete namespace $NAMESPACE --wait=false || echo "Namespace already gone"
+          kubectl delete namespace $NAMESPACE --ignore-not-found=true

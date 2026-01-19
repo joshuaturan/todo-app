@@ -49,9 +49,6 @@ jobs:
           docker push $TAG
           echo "TAG=$TAG" >> $GITHUB_ENV
 
-      - name: Set up Kustomize
-        uses: imranismail/setup-kustomize@v2.1.0
-
       - name: Deploy
         run: |-
           if [ "${{ github.ref_name }}" = "main" ]; then
@@ -60,16 +57,29 @@ jobs:
             NAMESPACE="${{ github.ref_name }}"
           fi
 
-          # Create namespace and switch context
+          # 1. Prepare Namespace
           kubectl create namespace $NAMESPACE || true
           kubectl config set-context --current --namespace=$NAMESPACE
 
-          # CRITICAL: We run kustomize from the ROOT (.) 
-          # so it includes the 'db' resource from your root kustomization.yaml
+          # 2. Deploy the Shared Database/Config/Secrets first
+          # This ensures the DB is always there regardless of which app deploys
+          if [ -d "db" ]; then
+            echo "--- Deploying Database Resources to $NAMESPACE ---"
+            cd db
+            kustomize edit set namespace $NAMESPACE
+            kustomize build . | kubectl apply -f -
+            cd ..
+          fi
+
+          # 3. Deploy the specific App Component (Frontend or Backend)
+          # We 'cd' into the directory so we ONLY patch this component's image
+          echo "--- Deploying ${{ inputs.directory }} to $NAMESPACE ---"
+          cd ${{ inputs.directory }}
+
           kustomize edit set image ${{ inputs.kustomize_patch_name }}=$TAG
           kustomize edit set namespace $NAMESPACE
 
-          echo "--- Root kustomization.yaml applied to $NAMESPACE ---"
           kustomize build . | kubectl apply -f -
 
+          # 4. Wait for the specific deployment to be ready
           kubectl rollout status deployment/${{ inputs.deployment_name }}

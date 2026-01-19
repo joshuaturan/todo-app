@@ -5,9 +5,9 @@ on:
 
 jobs:
   delete-namespace:
-    # Only run if a branch was deleted (ignore tag deletions)
     if: github.event.ref_type == 'branch'
     runs-on: ubuntu-latest
+    environment: dev
     env:
       GKE_CLUSTER: dwk-cluster
       GKE_ZONE: europe-north1-b
@@ -20,7 +20,11 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
+          # This will now find the secret because of the 'environment' line above
           credentials_json: "${{ secrets.GKE_SA_KEY }}"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
       - name: Get GKE credentials
         uses: google-github-actions/get-gke-credentials@v2
@@ -31,14 +35,14 @@ jobs:
 
       - name: Delete Namespace
         run: |-
-          # The deleted branch name is in github.event.ref
+          # For 'delete' events, the branch name is in github.event.ref
           NAMESPACE="${{ github.event.ref }}"
 
-          # Safety check: Never delete the 'project', 'default', or 'kube-system' namespaces
-          if [ "$NAMESPACE" == "main" ] || [ "$NAMESPACE" == "project" ] || [ "$NAMESPACE" == "default" ]; then
+          # Safety check: Protect production/system namespaces
+          if [[ "$NAMESPACE" =~ ^(main|project|default|kube-.*)$ ]]; then
             echo "Skipping deletion of protected namespace: $NAMESPACE"
             exit 0
           fi
 
-          echo "Deleting namespace: $NAMESPACE"
+          echo "Attempting to delete namespace: $NAMESPACE"
           kubectl delete namespace $NAMESPACE --ignore-not-found=true
